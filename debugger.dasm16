@@ -1,0 +1,1348 @@
+        set a, db_debug_this_code
+        jsr debugger
+        sub pc, 1
+
+;
+; Function that gets called at a break point.
+;
+:break_point_vector
+        set pc, db_break
+;
+; Function set_break_point( a = break-addr )
+;
+:set_break_point
+	set pc, db_set_break
+
+;
+; Function debugger()
+;
+:debugger
+	set pc, db_debugger
+
+;
+; Safe storage for the next instruction. This is the code that
+; was replaced by the jump instruction for the break point
+;
+:db_ins_addr
+	dat 0x0000
+:db_ins_len
+        dat 0x0000
+:db_ins_store
+	dat 0x0000, 0x0000, 0x0000, 0x0000
+
+;
+; This is the code that replaces some of the program code so that control
+; comes back to the debugger.
+;
+:db_break_jump
+	jsr break_point_vector		; Jesus, this is tricky. Document it!
+
+:db_exit_addr
+        dat 0x0000
+
+	dat 0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0
+	dat 0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0
+	dat 0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0
+	dat 0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0
+	dat 0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0
+	dat 0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0
+	dat 0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0
+	dat 0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0
+	dat 0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0
+	dat 0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0
+	dat 0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0
+	dat 0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0
+	dat 0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0
+	dat 0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0
+	dat 0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0
+	dat 0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0
+	dat 0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0
+	dat 0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0
+	dat 0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0
+:db_debugger_stack
+
+:db_saved_screen
+	dat 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	dat 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	dat 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	dat 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	dat 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	dat 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	dat 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	dat 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	dat 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	dat 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	dat 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	dat 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	dat 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	dat 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	dat 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	dat 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+:db_saved_screen_end
+
+:db_screen_layout
+        dat "-CPU-------------STACK----------"
+        dat "a:      x:     |                "
+        dat "b:      y:     |                "
+        dat "c:      z:     |                "
+        dat "i:      o:     |                "
+        dat "j:     pc:     |                "
+        dat "-DISASSEMBLY--------------------"
+        dat "    :                           "
+        dat "    :                           "
+        dat "    :                           "
+        dat "    :                           "
+        dat "    :                           "
+        dat "    :                           "
+        dat "    :                           "
+        dat "    :                           "
+        dat "    :                           "
+:db_screen_layout_end
+
+:db_basic_opcodes
+        dat "extsetaddsubmuldivmodshlshrandborxorifeifnifgifb"
+:db_extended_opcodes
+        dat "???jsr??????????????????????????????????????????"
+        dat "????????????????????????????????????????????????"
+:db_operands
+        dat "a",0,0,0,0
+        dat "b",0,0,0,0
+        dat "c",0,0,0,0
+        dat "x",0,0,0,0
+        dat "y",0,0,0,0
+        dat "z",0,0,0,0
+        dat "i",0,0,0,0
+        dat "j",0,0,0,0
+        dat "[a]",0,0
+        dat "[b]",0,0
+        dat "[c]",0,0
+        dat "[x]",0,0
+        dat "[y]",0,0
+        dat "[z]",0,0
+        dat "[i]",0,0
+        dat "[j]",0,0
+        dat "+a]",0,0
+        dat "+b]",0,0
+        dat "+c]",0,0
+        dat "+x]",0,0
+        dat "+y]",0,0
+        dat "+z]",0,0
+        dat "+i]",0,0
+        dat "+j]",0,0
+        dat "pop",0,0
+        dat "peek",0
+        dat "push",0
+        dat "sp",0,0,0
+        dat "pc",0,0,0
+        dat "o",0,0,0,0
+        dat "[nxt]"
+        dat "next",0
+        dat "00",0,0,0
+        dat "01",0,0,0
+        dat "02",0,0,0
+        dat "03",0,0,0
+        dat "04",0,0,0
+        dat "05",0,0,0
+        dat "06",0,0,0
+        dat "07",0,0,0
+        dat "08",0,0,0
+        dat "09",0,0,0
+        dat "0a",0,0,0
+        dat "0b",0,0,0
+        dat "0c",0,0,0
+        dat "0d",0,0,0
+        dat "0e",0,0,0
+        dat "0f",0,0,0
+        dat "10",0,0,0
+        dat "11",0,0,0
+        dat "12",0,0,0
+        dat "13",0,0,0
+        dat "14",0,0,0
+        dat "15",0,0,0
+        dat "16",0,0,0
+        dat "17",0,0,0
+        dat "18",0,0,0
+        dat "19",0,0,0
+        dat "1a",0,0,0
+        dat "1b",0,0,0
+        dat "1c",0,0,0
+        dat "1d",0,0,0
+        dat "1e",0,0,0
+        dat "1f",0,0,0
+
+:db_processor
+:db_a	dat 0x0000
+:db_b	dat 0x0000
+:db_c	dat 0x0000
+:db_x	dat 0x0000
+:db_y	dat 0x0000
+:db_z	dat 0x0000
+:db_i	dat 0x0000
+:db_j	dat 0x0000
+:db_pc	dat 0x0000
+:db_sp	dat 0x0000
+:db_o	dat 0x0000
+
+:db_hex dat "0123456789abcdef"
+
+:db_debugger
+        ; set up a new stack so that we preserve as much of the main program
+        ; stack as possible.
+        set [db_exit_addr], pop
+        set [db_sp], sp
+:db_debugger_restart_entry_point
+        set sp, db_debugger_stack
+
+        set [db_pc], a
+        set b, 1
+        jsr db_set_break
+
+	set a,[db_a]
+	set b,[db_b]
+	set c,[db_c]
+	set x,[db_x]
+	set y,[db_y]
+	set z,[db_z]
+	set i,[db_i]
+	set j,[db_j]
+	set o,[db_o]
+	set sp,[db_sp]
+	set pc,[db_pc]			; Must be the last thing!
+
+:db_set_break; (a = break_addr, b=length)
+        ifg b, 4
+        set b, 4
+        set c, db_ins_store
+
+        set [db_ins_addr], a
+        set [db_ins_len], b
+
+        set [c], [a]
+        set [a], [db_break_jump]
+
+        sub b, 1
+        ife b, 0
+        set pc, db_set_break_exit
+
+        add a, b
+        add c, b
+        set [c], [a]
+        set [a], [db_break_jump]
+
+        sub b, 1
+        ife b, 0
+        set pc, db_set_break_exit
+
+        sub a, b
+        sub c, b
+        set [c], [a]
+        set [a], 0x0001
+
+        sub b, 1
+        ife b, 0
+        set pc, db_set_break_exit
+
+        add c, 1
+        set [c], [a]
+        set [a], 0x0001
+
+:db_set_break_exit
+
+	set pc, pop
+
+:db_restore_breakpoint_code; ()
+        ife [db_ins_len], 0
+        set pc, pop
+
+	set c, [db_ins_addr]
+	set b, [db_ins_len]
+	set a, db_ins_store
+
+:db_restore_breakpoint_loop
+	set [c],[a]
+	add a, 1
+	add c, 1
+	sub b, 1
+	ifn b, 0
+	set pc, db_restore_breakpoint_loop
+
+        set [db_ins_addr], 0
+
+	set pc, pop
+
+:db_break; ()
+	; Save the processor state, including what pc should be
+	set [db_a],a
+	set [db_b],b
+	set [db_c],c
+	set [db_x],x
+	set [db_y],y
+	set [db_z],z
+	set [db_i],i
+	set [db_j],j
+	set [db_o],o
+	set [db_pc],pop			; this is tied into the trickiness
+	sub [db_pc],1			; at db_break_jump
+	set [db_sp],sp
+
+	set sp, db_debugger_stack
+
+	; Restore the original code that was safe stored when we wrote in 
+	; the break point.
+	jsr db_restore_breakpoint_code
+
+	; Update the on-screen display of the cpu
+	jsr db_save_screen
+	jsr db_show_screen
+
+	; wait for the user to say that he wants to go to the next instruction
+	jsr db_getch
+        set z, y
+
+	jsr db_restore_screen
+
+        ife z, 0x71                     ; q
+        set pc, [db_exit_addr]
+
+        ife z, 0x72                     ; r
+        set pc, db_restart
+
+	; Find the next instruction(s) and put in a break point
+	set i, [db_pc]			; Is instruction IF, ??? pc, or JSR
+	set a, [i]
+	and a, 0x3ff
+	ife a, 0x010			; JSR instruction
+	set pc, db_break_jsr_opcode
+
+	set a, [i]
+	and a, 0xf			; Test the basic opcode
+	ifg a, 0xb			; IFx instructions are 0xc - 0xf
+	set pc, db_break_if_opcode
+
+	set a, [i]
+	shr a, 4
+	and a, 0x3f
+	ife a, 0x1c			; This instruction modifies pc
+	set pc, db_break_pc_opcode
+
+        set pc, db_break_normal_opcode
+
+:db_break_if_opcode
+	set a,[i]
+	jsr db_instruction_length
+	add a,i
+
+	set push,a			; Save the start address
+	set a,[a]
+	jsr db_instruction_length
+	set b,a
+
+	add b,1
+	set a, pop
+	jsr db_set_break
+
+	set pc, db_break_exit
+
+:db_break_jsr_opcode
+	set a,[i]
+	set b,[1+i]
+
+	jsr db_operand_value
+        set b,1
+	jsr db_set_break
+
+	set pc, db_break_exit
+
+:db_break_pc_opcode
+	
+	set a,[i]
+	set b,[1+i]
+
+	jsr db_pc_target
+        set b,1
+	jsr db_set_break
+
+	set pc, db_break_exit
+
+:db_break_normal_opcode
+        set a,[i]
+	jsr db_instruction_length
+	add a,i
+        set b,1
+	jsr db_set_break
+
+:db_break_exit
+	; Remove the on-screen display of the cpu
+
+	; Restore the processor state and re-start execution
+	set a,[db_a]
+	set b,[db_b]
+	set c,[db_c]
+	set x,[db_x]
+	set y,[db_y]
+	set z,[db_z]
+	set i,[db_i]
+	set j,[db_j]
+	set o,[db_o]
+	set sp,[db_sp]
+	set pc,[db_pc]			; Must be the last thing!
+
+:db_pc_target; ( a = opcode, b = operand )
+	set push, x
+        set push, y
+	set x, a
+
+        jsr db_operand_value
+        set y, a
+
+        set a, x
+        jsr db_instruction_length
+
+	set c, [db_pc]
+	add a, c
+
+	set c, x
+	and c, 0x0f;
+	set pc, [db_pc_jump_table+c]
+:db_pc_jump_table
+	dat db_pc_exit
+	dat db_pc_set
+	dat db_pc_add
+	dat db_pc_sub
+	dat db_pc_mul
+	dat db_pc_div
+	dat db_pc_mod
+	dat db_pc_shl
+	dat db_pc_shr
+	dat db_pc_and
+	dat db_pc_bor
+	dat db_pc_xor
+	dat db_pc_if
+	dat db_pc_if
+	dat db_pc_if
+	dat db_pc_if
+
+:db_pc_set
+        set a, y
+        set pc, db_pc_exit
+
+:db_pc_add
+	add a, y
+	set pc, db_pc_exit
+	
+:db_pc_sub
+        sub a, y
+	set pc, db_pc_exit
+
+:db_pc_mul
+        mul a, y
+	set pc, db_pc_exit
+
+:db_pc_div
+        div a, y
+	set pc, db_pc_exit
+
+:db_pc_mod
+        mod a, y
+	set pc, db_pc_exit
+
+:db_pc_shl
+        shl a, y
+	set pc, db_pc_exit
+
+:db_pc_shr
+        shr a, y
+	set pc, db_pc_exit
+
+:db_pc_and
+        shr a, y
+	set pc, db_pc_exit
+
+:db_pc_bor
+        bor a, y
+	set pc, db_pc_exit
+
+:db_pc_xor
+        bor a, y
+	set pc, db_pc_exit
+
+:db_pc_if				; This should never happen!
+	set pc, db_restart
+
+:db_pc_exit
+        set y, pop
+	set x, pop
+	set pc, pop
+
+:db_operand_value; (a = opcode, b = operand )
+	shr a, 10
+
+	set pc, [db_operand_jump_table+a]
+:db_operand_jump_table
+	dat db_operand_register
+	dat db_operand_register
+	dat db_operand_register
+	dat db_operand_register
+	dat db_operand_register
+	dat db_operand_register
+	dat db_operand_register
+	dat db_operand_register
+	dat db_operand_indirect_register
+	dat db_operand_indirect_register
+	dat db_operand_indirect_register
+	dat db_operand_indirect_register
+	dat db_operand_indirect_register
+	dat db_operand_indirect_register
+	dat db_operand_indirect_register
+	dat db_operand_indirect_register
+	dat db_operand_indexed_register
+	dat db_operand_indexed_register
+	dat db_operand_indexed_register
+	dat db_operand_indexed_register
+	dat db_operand_indexed_register
+	dat db_operand_indexed_register
+	dat db_operand_indexed_register
+	dat db_operand_indexed_register
+	dat db_operand_pop
+	dat db_operand_peek
+	dat db_operand_push
+	dat db_operand_sp
+	dat db_operand_pc
+	dat db_operand_o
+	dat db_operand_indirect_next_word
+	dat db_operand_next_word
+	dat db_operand_small_literal
+	dat db_operand_small_literal
+	dat db_operand_small_literal
+	dat db_operand_small_literal
+	dat db_operand_small_literal
+	dat db_operand_small_literal
+	dat db_operand_small_literal
+	dat db_operand_small_literal
+	dat db_operand_small_literal
+	dat db_operand_small_literal
+	dat db_operand_small_literal
+	dat db_operand_small_literal
+	dat db_operand_small_literal
+	dat db_operand_small_literal
+	dat db_operand_small_literal
+	dat db_operand_small_literal
+
+:db_operand_register
+	set a, [db_processor+a]
+	set pc, db_operand_exit
+
+:db_operand_indirect_register
+	sub a,0x08
+	set c, [db_processor+a]
+	set a, [c]
+	set pc, db_operand_exit
+
+:db_operand_indexed_register
+	sub a, 0x10
+	set c, [db_processor+a]
+	add c, b
+	set a, [c]
+	set pc, db_operand_exit
+
+:db_operand_pop
+:db_operand_peek
+	set c, db_sp
+	set a, [c]
+	set pc, db_operand_exit
+
+:db_operand_push
+	set c, db_sp
+	sub c, 1
+	set a, [c]
+	set pc, db_operand_exit
+
+:db_operand_sp
+	set a, db_sp
+	set pc, db_operand_exit
+	
+:db_operand_pc
+	set a, db_pc
+	add a, 1
+	set pc, db_operand_exit
+
+:db_operand_o
+	set a, db_o
+	set pc, db_operand_exit
+
+:db_operand_indirect_next_word
+	set a, [b]
+	set pc, db_operand_exit
+
+:db_operand_next_word
+	set a, b
+	set pc, db_operand_exit
+
+:db_operand_small_literal
+	sub a, 0x20
+	set pc, db_operand_exit
+
+:db_operand_exit
+	set pc, pop
+
+:db_instruction_length; ( a = opcode )
+	set push, i
+
+	set i,1
+
+	set b,a
+	shr b,4
+	and b,0x3f
+	ife b,0x1f
+	add i,1
+	ifg 0x18,b
+	ifg 0x0f,b
+	ife 0x1e,b
+	add i,1
+
+	set b,a
+	shr b,10
+	ife b,0x1f
+	add i,1
+	ifg 0x18,b
+	ifg 0x0f,b
+	ife 0x1e,b
+	add i,1
+
+	set a,i
+
+	set i, pop
+	set pc, pop
+
+:db_print_state
+
+        set push, 0xf000
+        set push, [db_a]
+        set push, 2
+        set push, 1
+        jsr db_print_value
+        add sp, 4
+
+        set push, 0xf000
+        set push, [db_b]
+        set push, 2
+        set push, 2
+        jsr db_print_value
+        add sp, 4
+
+        set push, 0xf000
+        set push, [db_c]
+        set push, 2
+        set push, 3
+        jsr db_print_value
+        add sp, 4
+
+        set push, 0xf000
+        set push, [db_i]
+        set push, 2
+        set push, 4
+        jsr db_print_value
+        add sp, 4
+
+        set push, 0xf000
+        set push, [db_j]
+        set push, 2
+        set push, 5
+        jsr db_print_value
+        add sp, 4
+
+        set push, 0xf000
+        set push, [db_x]
+        set push, 10
+        set push, 1
+        jsr db_print_value
+        add sp, 4
+
+        set push, 0xf000
+        set push, [db_y]
+        set push, 10
+        set push, 2
+        jsr db_print_value
+        add sp, 4
+
+        set push, 0xf000
+        set push, [db_z]
+        set push, 10
+        set push, 3
+        jsr db_print_value
+        add sp, 4
+
+        set push, 0xf000
+        set push, [db_o]
+        set push, 10
+        set push, 4
+        jsr db_print_value
+        add sp, 4
+
+        set push, 0xf000
+        set push, [db_pc]
+        set push, 10
+        set push, 5
+        jsr db_print_value
+        add sp, 4
+
+        set pc, pop
+
+:db_print_stack
+        set push, i
+        set push, j
+
+        set i, [db_sp]
+        set j, 1
+
+:db_print_stack_loop
+        ife i, 0
+        set pc, db_print_stack_exit
+        ife j, 6
+        set pc, db_print_stack_exit
+
+        set push, 0xf000
+        set push, i
+        set push, 17
+        set push, j
+        jsr db_print_value
+        add sp, 4
+
+        set push, 0xf000
+        set push, 0x3a
+        set push, 21
+        set push, j
+        jsr db_putch
+        add sp, 4
+
+        set push, 0xf000
+        set push, [i]
+        set push, 22
+        set push, j
+        jsr db_print_value
+        add sp, 4
+
+        set push, 0xf000
+        set push, 0x20
+        set push, 26
+        set push, j
+        jsr db_putch
+        add sp, 4
+
+        add i, 1
+        ife i, 0
+        set pc, db_print_stack_exit
+
+        set push, 0xf000
+        set push, [i]
+        set push, 27
+        set push, j
+        jsr db_print_value
+        add sp, 4
+
+        add j, 1
+        add i, 1
+        set pc, db_print_stack_loop
+
+:db_print_stack_exit
+
+        set j, pop
+        set i, pop
+        set pc, pop
+
+:db_disassemble
+        set push, x
+        set push, y
+        set push, z
+        set push, i
+        set push, j
+
+        set z, [db_pc]
+        set j, 7
+
+:db_disassemble_loop
+        set i, 10
+        set x, z
+
+        ; Get the instruction part of the first word
+        set a, z
+        jsr db_get_instruction_word
+        and a, 0x0f
+        ife a, 0
+        set pc, db_disassemble_extended_opcode
+        mul a, 3
+        add a, db_basic_opcodes
+
+        ; print the opcode mnemonic
+        set push, 0xf000
+        set push, a
+        set push, 3
+        set push, i
+        set push, j
+        jsr db_puts
+        add sp, 5
+        add i, 4
+
+        set a, x
+        jsr db_get_instruction_word
+        set b, a
+
+        ; get the opcode again to figure out if we need to advance the
+        ; next word pointer (b)
+        set a, z
+        jsr db_get_instruction_word
+        shr a, 4
+        and a, 0x3f
+        ife a, 0x1f
+        add x, 1
+        ifg 0x18, a
+        ifg 0x0f, a
+        ife 0x1e, a
+        add x, 1
+
+        set push, [x]
+        set push, a
+        set push, i
+        set push, j
+        jsr db_print_operand
+        add sp, 4
+        add i, a
+
+        set push, 0xf000
+        set push, 0x2c
+        set push, i
+        set push, j
+        jsr db_putch
+        add sp, 4
+        add i,1
+
+        set a, z
+        jsr db_get_instruction_word
+        shr a, 10
+        ife a, 0x1f
+        add x, 1
+        ifg 0x18, a
+        ifg 0x0f, a
+        ife 0x1e, a
+        add x, 1
+
+        set push, [x]
+        set push, a
+        set push, i
+        set push, j
+        jsr db_print_operand
+        add sp, 4
+        add i,a
+
+        set pc, db_disassemble_memory_dump
+
+:db_disassemble_extended_opcode
+        set x, z
+
+        set a, z
+        jsr db_get_instruction_word
+        shr a, 4
+        and a, 0x3f
+        mul a, 3
+        add a, db_extended_opcodes
+
+        set push, 0xf000
+        set push, a
+        set push, 3
+        set push, i
+        set push, j
+        jsr db_puts
+        add sp, 5
+        add i,4
+
+        set a, z
+        jsr db_get_instruction_word
+        shr a, 10
+        ife a, 0x1f
+        add x, 1
+        ifg 0x18, a
+        ifg 0x0f, a
+        ife 0x1e, a
+        add x, 1
+
+        set push, [x]
+        set push, a
+        set push, i
+        set push, j
+        jsr db_print_operand
+        add sp, 4
+        add i,a
+
+:db_disassemble_memory_dump
+        ; After the instruction is printed, dump th memory for it
+        set a, z
+        jsr db_get_instruction_word
+        jsr db_instruction_length
+
+        set x, a
+
+        ; Print out the instruction data.
+:db_disassemble_memory_loop
+        set i, 0
+
+        ; Print out the memory address.
+        set push, 0xf000
+        set push, z
+        set push, i
+        set push, j
+        jsr db_print_value
+        add sp, 4
+        add i, 5
+
+        ; Print out the value at that address
+        set push, 0xf000
+        set a, z
+        jsr db_get_instruction_word
+        set push, a
+        set push, i
+        set push, j
+        jsr db_print_value
+        add sp, 4
+        add i, 5
+
+        add z, 1                         ; increment the instruction addr
+        add y, 5                         ; increment the column
+        sub x, 1                         ; dercrement the instruction counter
+        add j, 1                         ; add a row
+        ifg j, 0x0f
+        set pc, db_disassemble_exit
+        ifg x, 0
+        set pc, db_disassemble_memory_loop
+
+        ifg 0x10, j
+        set pc, db_disassemble_loop
+
+
+:db_disassemble_exit
+        set j, pop
+        set i, pop
+        set z, pop
+        set y, pop
+        set z, pop
+        set pc, pop
+
+:db_get_instruction_word
+        set a,[a]
+        set pc,pop
+
+
+:db_print_operand; (row, col, operand, next )
+        set push, j
+        set j, sp
+        add j, 1
+        set push, x
+
+        set a, [3+j]
+
+        ife a, 0x1f
+        set pc, db_print_operand_immediate
+
+        ifg 0x18, a
+        ifg 0x0f, a
+        ife 0x1e, a
+        set pc, db_print_operand_indirect
+
+        set pc, db_print_operand_static
+
+:db_print_operand_indirect
+        ifn 0x1e, a
+        set pc, db_print_register_indirect
+
+        set x, [2+j]
+
+        set push, 0xf000
+        set push, 0x5b
+        set push, x
+        set push, [1+j]
+        jsr db_putch
+        add sp, 4
+        add x,1
+
+        set push, 0xf000
+        set push, [4+j]
+        set push, x
+        set push, [1+j]
+        jsr db_print_value
+        add sp, 4
+        add x,4
+
+        set push, 0xf000
+        set push, 0x5d
+        set push, i
+        set push, [1+j]
+        jsr db_putch
+        add sp, 4
+        add i,1
+
+        set a, i
+        sub a, [2+j]
+        set pc, db_print_operand_exit
+
+:db_print_register_indirect
+        set x, [2+j]
+
+        set push, 0xf000
+        set push, 0x5b
+        set push, x
+        set push, [1+j]
+        jsr db_putch
+        add sp, 4
+        add x,1
+
+        set push, 0xf000
+        set push, [4+j]
+        set push, x
+        set push, [1+j]
+        jsr db_print_value
+        add sp, 4
+        add x,4
+
+        set a, [3+j]
+        mul a, 5
+        add a, db_operands
+
+        set push, 0xf000
+        set push, a
+        set push, 5
+        set push, x
+        set push, [1+j]
+        jsr db_puts
+        add sp, 5
+        add a, x
+
+        sub a, [2+j]
+        set pc, db_print_operand_exit
+
+:db_print_operand_immediate
+        set push, 0xf000
+        set push, [4+j]
+        set push, [2+j]
+        set push, [1+j]
+        jsr db_print_value
+        add sp, 4
+
+        set a, 4
+        set pc, db_print_operand_exit
+
+:db_print_operand_static
+
+        mul a, 5
+        add a, db_operands
+
+        set push, 0xf000
+        set push, a
+        set push, 5
+        set push, [2+j]
+        set push, [1+j]
+        jsr db_puts
+        add sp, 5
+
+:db_print_operand_exit
+        set x, pop
+        set j, pop
+        set pc, pop
+
+
+:db_print_value; ( row, col, value, mode )
+        set push, j
+        set j, sp
+        add j, 1
+
+        set push, z
+        set push, y
+
+        set a, [1+j]
+        mul a, 0x20
+        add a, [2+j]
+
+        set b, [3+j]
+        set c, [4+j]
+
+        set z, b
+        and z, 0xf
+        set y, [db_hex + z]
+        bor y, c
+        set [0x8003 + a], y
+
+        shr b, 4
+        set z, b
+        and z, 0xf
+        set y, [db_hex + z]
+        bor y, c
+        set [0x8002 + a], y
+
+        shr b, 4
+        set z, b
+        and z, 0xf
+        set y, [db_hex + z]
+        bor y, c
+        set [0x8001 + a], y
+
+        shr b, 4
+        set z, b
+        and z, 0xf
+        set y, [db_hex + z]
+        bor y, c
+        set [0x8000 + a], y
+
+        set y, pop
+        set z, pop
+        set j, pop
+        set pc, pop
+
+:db_print_lo_byte; ( row, col, value, mode ) a = rowcol, b = value, c = text_mode )
+        set push, j
+        set j, sp
+        add j, 1
+
+        set push, z
+        set push, y
+
+        set a, [1+j]
+        mul a, 0x20
+        add a, [2+j]
+
+        set b, [3+j]
+        set c, [4+j]
+
+        set z, b
+        and z, 0xf
+        set y, [db_hex + z]
+        bor y, c
+        set [0x8001 + a], y
+
+        shr b, 4
+        set z, b
+        and z, 0xf
+        set y, [db_hex + z]
+        bor y, c
+        set [0x8000 + a], y
+
+        set y, pop
+        set z, pop
+        set j, pop
+        set pc, pop
+
+:db_print_hi_byte; ( row, col, value, mode ) a = rowcol, b = value, c = text_mode )
+        set push, j
+        set j, sp
+        add j, 1
+
+        set push, z
+        set push, y
+
+        set a, [1+j]
+        mul a, 0x20
+        add a, [2+j]
+
+        set b, [3+j]
+        set c, [4+j]
+
+        shr b, 8
+
+        set z, b
+        and z, 0xf
+        set y, [db_hex + z]
+        bor y, c
+        set [0x8001 + a], y
+
+        shr b, 4
+        set z, b
+        and z, 0xf
+        set y, [db_hex + z]
+        bor y, c
+        set [0x8000 + a], y
+
+        set y, pop
+        set z, pop
+        set j, pop
+        set pc, pop
+
+:db_show_screen
+        set push, x
+        set push, y
+
+        set a, sp
+        set sp, db_screen_layout
+        set b, 0x8000
+
+:db_show_loop
+        set x, pop
+        bor x, 0xf000
+        set [b], x
+
+        set x, pop
+        bor x, 0xf000
+        set [1+b], x
+
+        set x, pop
+        bor x, 0xf000
+        set [2+b], x
+
+        set x, pop
+        bor x, 0xf000
+        set [3+b], x
+
+        add b, 4
+
+        ifg db_screen_layout_end, sp
+        set pc, db_show_loop
+
+        set sp, a
+
+        jsr db_print_state
+        jsr db_print_stack
+        jsr db_disassemble
+
+        set y, pop
+        set x, pop
+	set pc, pop
+
+:db_save_screen
+	set a, sp
+	set sp, 0x8000
+	set b, db_saved_screen
+
+:db_save_loop
+	set [b], pop
+	set [1+b], pop
+	set [2+b], pop
+	set [3+b], pop
+	set [4+b], pop
+	set [5+b], pop
+	set [6+b], pop
+	set [7+b], pop
+
+        add b, 8
+
+	ifg 0x8200, sp
+	set pc, db_save_loop
+
+	set sp, a
+	set pc, pop
+
+:db_restore_screen
+	set a, sp
+	set b, 0x8000
+	set sp, db_saved_screen
+
+:db_restore_loop
+	set [b], pop
+	set [1+b], pop
+	set [2+b], pop
+	set [3+b], pop
+	set [4+b], pop
+	set [5+b], pop
+	set [6+b], pop
+	set [7+b], pop
+
+        add b, 8
+
+	ifg db_saved_screen_end, sp
+	set pc, db_restore_loop
+
+	set sp, a
+	set pc, pop
+
+:db_getch
+        set a, [0x9000]
+        ife a, 0
+        set pc, db_getch
+        set [0x9000], 0
+
+        set pc, pop
+
+:db_putch; (row, col, ch, mode)
+        set push, j
+        set j, sp
+        add j, 1
+
+        set a,[1+j]
+        mul a,0x20
+        add a,[2+j]
+        bor [3+j],[4+j]
+
+        set [0x8000+a],[3+j]
+
+        set j, pop
+        set pc, pop
+
+:db_puts; (row, col, maxlen, *string, mode): length_written
+        set push, j
+        set j, sp
+        add j, 1
+
+        set push, i
+
+        set a,[1+j]
+        mul a,0x20
+        add a,[2+j]
+
+        set b,[4+j]
+
+        set i,0
+
+:db_puts_loop
+        set c,[b]
+        ife c, 0
+        set pc, db_puts_break
+
+        bor c,[5+j]
+        set [0x8000+a],c
+
+        add b,1
+        add a,1
+        add i,1
+        ifg [3+j],i
+        set pc, db_puts_loop
+
+:db_puts_break
+        set a, i
+
+        set i, pop
+        set j, pop
+        set pc, pop
+
+:db_restart
+	set a, db_processor
+
+	; reset the processor state
+	set [a],0
+	set [1+a],0
+	set [2+a],0
+	set [3+a],0
+	set [4+a],0
+	set [5+a],0
+	set [6+a],0
+	set [7+a],0
+	set [8+a],0
+	set [9+a],0
+
+	; restore any outstanding code
+        jsr db_restore_breakpoint_code
+
+	set sp, 0			; Unwind the debugged program's stack
+	set pc, db_debugger		; Start again.
+
+:db_debug_this_code
+        set a, 3
+:db_sample_loop
+        set a,a
+        set push, a
+        set b, pc
+        set push, b
+        sub a,1
+        ifg a,0
+        set pc, db_sample_loop
+
+        add b, 0xa000
+        set c, 0xbf33
+        add b, c
+        set [200+b],[201+b]
+        add sp, 6
+        sub pc, 1
