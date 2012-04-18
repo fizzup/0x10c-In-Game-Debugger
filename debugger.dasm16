@@ -1,17 +1,54 @@
-        set a, db_debug_this_code
+	set push,db_debug_this_code
         jsr debugger
         sub pc, 1
 
 ;
 ; Function that gets called at a break point.
+; This vector has to be within the first 1f bytes of memory in order for the
+; instruction "jsr break_point_vector" to be one word long. We need to use
+; the jsr instruction so that it pushes the pc register on to the stack and the
+; debugger can get back to the executed code. It needs to be one word long
+; so that a construction like this
+;
+; ife a, b
+; add a, 1
+; add b, 2
+;
+; can be stepped into instruction by instruction. When the "if" instruction is
+; going to be executed, both add a, 1 and add b, 1 need to be replaced by
+; the breakpoint jsr code, so that code can only be one instruction long.
+;
+; The single-word instruction can replace a multi-word instruction without
+; any loss of functionality, because the correct pc for the next breakpoint
+; when single stepping can always be determined by examining the code at the
+; current breakpoint once it's restored.
+; 
+; The only other special case is for an instruction like
+;
+; ifn a, b
+; set [0x8000+a],[0x8000+b]
+; set [0x8000+b], 0xf020
+;
+; If the "ifn a, b" is to be stepped into, the next two instructions have to
+; be replaced by the breakpoint code, but the start of the second instruction
+; has to be lined up with the jsr breakpoint code in order to get the right
+; pc when the debugger is called, so it gets replaced like this
+;
+; ifn a, b
+; jsr break_point_vector
+; set a, a
+; set a, a
+; jsr break_point_vector
+; dat 0x8000
+; dat 0xf020
+;
+; This preserves the semantics of the "if" instruction, does not disturb the
+; state of the processor (set a,a is a no-op instruction) and the second jsr
+; is lined up with the start of the instruction that used to follow the if
+; statement.
 ;
 :break_point_vector
         set pc, db_break
-;
-; Function set_break_point( a = break-addr )
-;
-:set_break_point
-	set pc, db_set_break
 
 ;
 ; Function debugger()
@@ -20,8 +57,8 @@
 	set pc, db_debugger
 
 ;
-; Safe storage for the next instruction. This is the code that
-; was replaced by the jump instruction for the break point
+; Safe storage for the next instruction. This is the code that was replaced
+; by the jsr instruction for the break point
 ;
 :db_ins_addr
 	dat 0x0000
@@ -31,15 +68,18 @@
 	dat 0x0000, 0x0000, 0x0000, 0x0000
 
 ;
-; This is the code that replaces some of the program code so that control
-; comes back to the debugger.
+; In order to set a break point, the debugger replaces some of the program 
+; code with instructions that return control back to the debugger. This is
+; the code that returns control to the debugger. For a full description of
+; how it works, see the comment at break_point_vector, above.
 ;
 :db_break_jump
-	jsr break_point_vector		; Jesus, this is tricky. Document it!
+	jsr break_point_vector
 
-:db_exit_addr
-        dat 0x0000
-
+; This is a stack that can be used by the debugger so as not to put values
+; on the debugged program's stack. In fact, the debugged program does put
+; a return address on the stack at a breakpoint, so there is some pollution
+; of the debugged program's stack, but this is not avoidable.
 	dat 0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0
 	dat 0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0
 	dat 0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0
@@ -61,6 +101,10 @@
 	dat 0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0
 :db_debugger_stack
 
+; The debugger shows the cpu registers, the stack, and several lines of
+; disassembly on the screen. This memory location is a spot that preserves
+; the debugged program's screen output while the debugger's screen is
+; displayed.
 :db_saved_screen
 	dat 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 	dat 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
@@ -80,6 +124,11 @@
 	dat 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 :db_saved_screen_end
 
+; This is the main layout of the debugger's screen. It's cheapest to have
+; the entire screen defined here, and then have it copied into place, rather
+; than have a bunch of individual db_puts calls. It would be faster still to
+; include the mode in the definition, but it would be cumbersome to edit the
+; layout.
 :db_screen_layout
         dat "-CPU-------------STACK----------"
         dat "a:      x:     |                "
@@ -99,11 +148,24 @@
         dat "    :                           "
 :db_screen_layout_end
 
+; This is a lookup tabble for the 15 basic opcodes. "ext" is for extended,
+; and the code never references that location, because a test is made for
+; ( instruction & 0xf ) == 0.
 :db_basic_opcodes
         dat "extsetaddsubmuldivmodshlshrandborxorifeifnifgifb"
+
+; This is a lookup table for the 31 extended opcodes. At the time of writing
+; only one of the opcodes is defined (0x01 == jsr), but the disassembler
+; correctly decodes operands for ??? undefined/reserved opcodes.
 :db_extended_opcodes
         dat "???jsr??????????????????????????????????????????"
         dat "????????????????????????????????????????????????"
+
+; This is a lookup table for the 32 possible operands. Any operand that
+; involves "next word" does not use this table, but an entry is included to
+; keep the rest of the possible opcodes in position. The db_puts function
+; stops printing at the first zero, but the strings are zero padded so that
+; each one is the same size.
 :db_operands
         dat "a",0,0,0,0
         dat "b",0,0,0,0
@@ -135,7 +197,7 @@
         dat "sp",0,0,0
         dat "pc",0,0,0
         dat "o",0,0,0,0
-        dat "[nxt]"
+        dat "[nx]",0
         dat "next",0
         dat "00",0,0,0
         dat "01",0,0,0
@@ -170,6 +232,8 @@
         dat "1e",0,0,0
         dat "1f",0,0,0
 
+; This is the area of memory used to store all the register values from
+; the debugged program.
 :db_processor
 :db_a	dat 0x0000
 :db_b	dat 0x0000
@@ -183,51 +247,97 @@
 :db_sp	dat 0x0000
 :db_o	dat 0x0000
 
+:db_saved_sp
+	dat 0x0000
+
+; This is a lookup table for converting a nibble to its hex character.
 :db_hex dat "0123456789abcdef"
 
+; This is the function that starts the debugger by calling a particular
+; function. The function call semantics are
+;
+; db_debugger( target_function, ... )
+;
+; All arguments are pushed on the stack, last argument first.
+;
+; The first argument (target_function) is the function to call in the debugger.
+; db_debugger returns the same registers in the same status as target_function.
+;
+; This is an example of how to use it:
+;
+; set a, 5
+; set push,b
+; set push,c
+; jsr target_function
+; add sp, 2
+;
+; can be replaced with
+;
+; set a, 5
+; set push,b
+; set push,c
+; set push,target_function
+; jsr db_debugger
+; add sp, 2		; Not a typo. It should be "2" and not "3"
+;
+; This will cause the debugger to start running on "target_function". When
+; operating systems on DCPU-16 become more sophisticated, the method of 
+; running a program in the debugger will be made more betterer.
 :db_debugger
-        ; set up a new stack so that we preserve as much of the main program
-        ; stack as possible.
-        set [db_exit_addr], pop
+        ; Set up the state of the cpu for the debugged program
+	set [db_a], a
+	set [db_b], b
+	set [db_c], c
+	set [db_x], x
+	set [db_y], y
+	set [db_z], z
+	set [db_i], i
+	set [db_j], j
+	set [db_o], o
+        set a, pop
+	set b, pop
+	set push, a
+	set [db_pc], b
         set [db_sp], sp
-:db_debugger_restart_entry_point
-        set sp, db_debugger_stack
+	set [db_saved_sp], sp
 
-        set [db_pc], a
-        set b, 1
+        set sp, db_debugger_stack	; Preserve the main stack
+
+        set a, [db_pc]			; Set the first break point at the
+        set b, 1			; start of the function
         jsr db_set_break
 
-	set a,[db_a]
-	set b,[db_b]
-	set c,[db_c]
-	set x,[db_x]
-	set y,[db_y]
-	set z,[db_z]
-	set i,[db_i]
+	set a,[db_a]			; set up the processor to start the
+	set b,[db_b]			; function that we're supposed to
+	set c,[db_c]			; debug. We jump to the function
+	set x,[db_x]			; rather than using jsr because
+	set y,[db_y]			; the stack is now set up exactly
+	set z,[db_z]			; as if this function had not been
+	set i,[db_i]			; caled
 	set j,[db_j]
 	set o,[db_o]
 	set sp,[db_sp]
 	set pc,[db_pc]			; Must be the last thing!
 
 :db_set_break; (a = break_addr, b=length)
-        ifg b, 4
-        set b, 4
-        set c, db_ins_store
+        ifg b, 4			; see the comment at db_break_vector
+        set b, 4			; for a description of all the possible
+        set c, db_ins_store		; breakpoint code
 
-        set [db_ins_addr], a
-        set [db_ins_len], b
+        set [db_ins_addr], a		; remember the length and address
+        set [db_ins_len], b		; of the breakpoint
 
-        set [c], [a]
-        set [a], [db_break_jump]
+        set [c], [a]			; save the code at the break point
+        set [a], [db_break_jump]	; replace it with the jsr instruction
 
         sub b, 1
         ife b, 0
         set pc, db_set_break_exit
 
-        add a, b
-        add c, b
-        set [c], [a]
-        set [a], [db_break_jump]
+        add a, b			; for a breakpoint from stepping into
+        add c, b			; an "if" statement, there can be
+        set [c], [a]			; two possible destinations, so
+        set [a], [db_break_jump]	; both of them need to be replaced.
 
         sub b, 1
         ife b, 0
@@ -236,7 +346,7 @@
         sub a, b
         sub c, b
         set [c], [a]
-        set [a], 0x0001
+        set [a], 0x0001			; This is code for set a,a (no-op).
 
         sub b, 1
         ife b, 0
@@ -254,8 +364,8 @@
         ife [db_ins_len], 0
         set pc, pop
 
-	set c, [db_ins_addr]
-	set b, [db_ins_len]
+	set c, [db_ins_addr]		; restore the original code that
+	set b, [db_ins_len]		; has been replaced for a breakpoint.
 	set a, db_ins_store
 
 :db_restore_breakpoint_loop
@@ -266,12 +376,20 @@
 	ifn b, 0
 	set pc, db_restore_breakpoint_loop
 
-        set [db_ins_addr], 0
+        set [db_ins_addr], 0		; flag that no breakpoint is set.
 
 	set pc, pop
 
+;
+; This is the function that is called when a breakpoint is reached in
+; the debugged program. Since it's called with jsr, we can use the pc value
+; pushed on the stack to figure out where the breakpoint was.
 :db_break; ()
-	; Save the processor state, including what pc should be
+	; Save the processor state, including what pc should be. The pc is
+	; always going to be one bigger than it ought to be, since the return
+	; address from the function immediately follows the jsr, which is
+	; one word long. When this function is called, the processor was
+	; just about to execute the instruction that the jsr replaced.
 	set [db_a],a
 	set [db_b],b
 	set [db_c],c
@@ -285,7 +403,7 @@
 	sub [db_pc],1			; at db_break_jump
 	set [db_sp],sp
 
-	set sp, db_debugger_stack
+	set sp, db_debugger_stack	; prevent writing to the program stack
 
 	; Restore the original code that was safe stored when we wrote in 
 	; the break point.
@@ -293,20 +411,44 @@
 
 	; Update the on-screen display of the cpu
 	jsr db_save_screen
+
+:db_break_read_char
 	jsr db_show_screen
 
-	; wait for the user to say that he wants to go to the next instruction
+	; wait for the user to type a command
 	jsr db_getch
-        set z, y
+        set z, a
 
-	jsr db_restore_screen
+	jsr db_restore_screen		; restore the program's screen
 
-        ife z, 0x71                     ; q
-        set pc, [db_exit_addr]
+        ife z, 0x71                     ; q == "quit"
+	set pc, db_break_return
 
-        ife z, 0x72                     ; r
-        set pc, db_restart
+        ife z, 0x72                     ; r == "run"
+        set pc, [db_pc]			; run without any breakpoints.
 
+	ife z, 0x6e			; n == "next" (step over jsr)
+	set pc, db_break_next_step
+
+	ife z, 0x73			; s == "step" (step into jsr)
+	set pc, db_break_next_step
+
+	set pc, db_break_read_char
+
+:db_break_return			; This is not the breakpoint
+	set a,[db_a]			; returning control to the debugged
+	set b,[db_b]			; program. This is the breakpoint
+	set c,[db_c]			; pretending that the function has
+	set x,[db_x]			; finished, and should return.
+	set y,[db_y]
+	set z,[db_z]
+	set i,[db_i]
+	set j,[db_j]
+	set o,[db_o]
+	set sp,[db_saved_sp]		; This unwinds the whole stack!
+	set pc, pop
+
+:db_break_next_step
 	; Find the next instruction(s) and put in a break point
 	set i, [db_pc]			; Is instruction IF, ??? pc, or JSR
 	set a, [i]
@@ -344,9 +486,13 @@
 	set pc, db_break_exit
 
 :db_break_jsr_opcode
+	ife z, 0x6e			; n == "next", treat jsr as a
+	set pc, db_break_normal_opcode	; normal opcode: break right after it
+
 	set a,[i]
 	set b,[1+i]
 
+	shr a, 10
 	jsr db_operand_value
         set b,1
 	jsr db_set_break
@@ -372,7 +518,6 @@
 	jsr db_set_break
 
 :db_break_exit
-	; Remove the on-screen display of the cpu
 
 	; Restore the processor state and re-start execution
 	set a,[db_a]
@@ -385,27 +530,45 @@
 	set j,[db_j]
 	set o,[db_o]
 	set sp,[db_sp]
+	;
+	; This is a strange function, because it doesn't return control back
+	; to the instruction that follows the jsr that activates it. Instead,
+	; it modifies the code that calls it, and then returns control back
+	; to the same program counter that called it.
+	;
 	set pc,[db_pc]			; Must be the last thing!
 
+;
+; Figure out the target program counter of an instruction that modifies
+; PC (other than jsr, which is handled as a special case). Of the basic
+; instructions, only the "if" instructions cannot modify pc. The semantics
+; of some of the instructions modifying pc are weird, but since these
+; instructions could be issued as a bug (and this is a debugger) all of the 
+; cases need to be handled properly.
+;
 :db_pc_target; ( a = opcode, b = operand )
 	set push, x
         set push, y
 	set x, a
 
+	shr a, 10
         jsr db_operand_value
         set y, a
 
         set a, x
         jsr db_instruction_length
 
-	set c, [db_pc]
-	add a, c
+	set a, [db_pc]
 
 	set c, x
 	and c, 0x0f;
 	set pc, [db_pc_jump_table+c]
+
+	; This jump table executes the correct code based on the
+	; instruction type. Extended opcodes and if opcodes should not
+	; be handled here, because they are handled specially in db_break.
 :db_pc_jump_table
-	dat db_pc_exit
+	dat db_pc_exit			; This should not happen
 	dat db_pc_set
 	dat db_pc_add
 	dat db_pc_sub
@@ -417,7 +580,7 @@
 	dat db_pc_and
 	dat db_pc_bor
 	dat db_pc_xor
-	dat db_pc_if
+	dat db_pc_if			; This should not happen
 	dat db_pc_if
 	dat db_pc_if
 	dat db_pc_if
@@ -467,7 +630,6 @@
 	set pc, db_pc_exit
 
 :db_pc_if				; This should never happen!
-	set pc, db_restart
 
 :db_pc_exit
         set y, pop
@@ -475,7 +637,6 @@
 	set pc, pop
 
 :db_operand_value; (a = opcode, b = operand )
-	shr a, 10
 
 	set pc, [db_operand_jump_table+a]
 :db_operand_jump_table
@@ -547,8 +708,7 @@
 
 :db_operand_pop
 :db_operand_peek
-	set c, db_sp
-	set a, [c]
+	set a, [db_sp]
 	set pc, db_operand_exit
 
 :db_operand_push
@@ -593,11 +753,11 @@
 	set b,a
 	shr b,4
 	and b,0x3f
-	ife b,0x1f
+	ife b,0x1f			; If literal
 	add i,1
-	ifg 0x18,b
-	ifg 0x0f,b
-	ife 0x1e,b
+	ifg 0x18,b			; If (b<0x18 &&
+	ifg 0x10,b			;               b>=0x10 ||
+	ife 0x1e,b			; 			   b == 0x1e)
 	add i,1
 
 	set b,a
@@ -605,7 +765,7 @@
 	ife b,0x1f
 	add i,1
 	ifg 0x18,b
-	ifg 0x0f,b
+	ifg 0x10,b
 	ife 0x1e,b
 	add i,1
 
@@ -614,6 +774,9 @@
 	set i, pop
 	set pc, pop
 
+;
+; Print the register values of the cpu for the debugged program
+;
 :db_print_state
 
         set push, 0xf000
@@ -688,6 +851,9 @@
 
         set pc, pop
 
+;
+; Print out the values in the stack for the debugged program
+;
 :db_print_stack
         set push, i
         set push, j
@@ -750,6 +916,8 @@
         set i, pop
         set pc, pop
 
+;
+; Print out several lines of disassembly starting with the instruction at db_pc
 :db_disassemble
         set push, x
         set push, y
@@ -1345,4 +1513,4 @@
         add b, c
         set [200+b],[201+b]
         add sp, 6
-        sub pc, 1
+	set pc, pop

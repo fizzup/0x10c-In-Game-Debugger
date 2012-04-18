@@ -1,0 +1,14 @@
+IGD - a 0x10c In Game Debugger
+
+This is an in-game disassembler and debugger for the DCPU-16 CPU in 0x10c. It
+currently runs in the emulated CPU in the DCPU-16 Studio available at
+http://badsector.github.com/dcpustud/downloads.html.
+
+To run the debugger, you need to start it at a particular function, by pushing
+the address of the function on the stack, and calling the function "debugger".
+
+The debugger will then single-step through the code. There isn't any support
+for arbitrary breakpoints yet.
+
+The label ":break_point_vector" must be at an address that is less than 0x20.
+This is needed so that the breakpoint code is one word long.
